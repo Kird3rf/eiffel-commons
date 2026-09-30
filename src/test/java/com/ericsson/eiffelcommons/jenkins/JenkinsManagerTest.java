@@ -24,6 +24,7 @@ import org.json.JSONObject;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockserver.integration.ClientAndServer;
+import org.mockserver.model.HttpRequest;
 import org.mockserver.model.Parameter;
 
 import com.ericsson.eiffelcommons.exceptions.JenkinsManagerException;
@@ -97,6 +98,17 @@ public class JenkinsManagerTest {
         String actualEncoding = jenkins.getEncoding();
         String expectedEncoding = createEncodingFromUsernameAndPassword(USERNAME, PASSWORD);
         assertEquals(expectedEncoding, actualEncoding);
+    }
+
+    @Test
+    public void jenkinsManagerAuthHeaderWithNonAsciiPassword() throws Exception {
+        setUpCrumbEndpoint();
+        new JenkinsManager(URL + ":" + port, "unicode-user", "p\u00e4ssw\u00f6rd\u20ac");
+        HttpRequest[] requests = mockServer.retrieveRecordedRequests(
+                request().withMethod("GET").withPath(ENDPOINT_CRUMB));
+        assertEquals(1, requests.length);
+        assertEquals("Basic dW5pY29kZS11c2VyOnDDpHNzd8O2cmTigqw=",
+                requests[0].getFirstHeader(HEADER_AUTH));
     }
 
     @Test
