@@ -13,10 +13,9 @@ import java.net.ServerSocket;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
-
-import javax.xml.bind.DatatypeConverter;
 
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.conn.UnsupportedSchemeException;
@@ -25,6 +24,7 @@ import org.json.JSONObject;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockserver.integration.ClientAndServer;
+import org.mockserver.model.HttpRequest;
 import org.mockserver.model.Parameter;
 
 import com.ericsson.eiffelcommons.exceptions.JenkinsManagerException;
@@ -98,6 +98,17 @@ public class JenkinsManagerTest {
         String actualEncoding = jenkins.getEncoding();
         String expectedEncoding = createEncodingFromUsernameAndPassword(USERNAME, PASSWORD);
         assertEquals(expectedEncoding, actualEncoding);
+    }
+
+    @Test
+    public void jenkinsManagerAuthHeaderWithNonAsciiPassword() throws Exception {
+        setUpCrumbEndpoint();
+        new JenkinsManager(URL + ":" + port, "unicode-user", "p\u00e4ssw\u00f6rd\u20ac");
+        HttpRequest[] requests = mockServer.retrieveRecordedRequests(
+                request().withMethod("GET").withPath(ENDPOINT_CRUMB));
+        assertEquals(1, requests.length);
+        assertEquals("Basic dW5pY29kZS11c2VyOnDDpHNzd8O2cmTigqw=",
+                requests[0].getFirstHeader(HEADER_AUTH));
     }
 
     @Test
@@ -602,7 +613,7 @@ public class JenkinsManagerTest {
     private String createEncodingFromUsernameAndPassword(String username, String password)
             throws UnsupportedEncodingException {
         String authString = String.join(":", username, password);
-        String encoding = DatatypeConverter.printBase64Binary(authString.getBytes("utf-8"));
+        String encoding = Base64.getEncoder().encodeToString(authString.getBytes("utf-8"));
         return encoding;
     }
 
